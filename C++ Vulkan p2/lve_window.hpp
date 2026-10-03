@@ -1,6 +1,7 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN // Forces glfw to use a vulkan context instead of OpenGl
+// Tells Glfw to use a Vulkan Context:
+#define GLFW_INCLUDE_VULKAN 
 #include <GLFW/glfw3.h>
 #include <iostream>
 
@@ -19,10 +20,10 @@ public:
     LveWindow(const uint32_t w, const uint32_t h, std::string name);
     ~LveWindow();
     
-    // Disable the copy constructor op and the copy assignment op:
+    // RAII Protection:
     LveWindow(const LveWindow& other) = delete;
     LveWindow &operator=(const LveWindow& other) = delete;
 
-    bool shouldClose() { return glfwWindowShouldClose(window); } // Helper func
+    bool shouldClose() { return glfwWindowShouldClose(window); }
 };
 }
