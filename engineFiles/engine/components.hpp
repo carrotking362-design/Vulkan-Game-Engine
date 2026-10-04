@@ -6,44 +6,57 @@
 #include "data.hpp"
 #include "entity.hpp"
 
+#include "serializer.hpp"
+
 // Enum for compoennt tyoe (fast check for premade components)
 
 // Components
 
-class component{
+struct Entity;
+
+class Component{
 public:
-    entity* ownEntity;
+    Entity* ownEntity;
 
-    void awake() {}
-    void start() {}
-    void update() {}
+    virtual ~Component() = default;
+
+    virtual void Awake() {}
+    virtual void Start() {}
+    virtual void Update() {}
+
+    virtual void Serialize() {}
 };
 
-class transform : public component{
+class Transform : public Component{
 public:
-    vector3 position;
-    vector3 scale;
-    quaternion rotation;
+    Vector3 position;
+    Vector3 scale;
+    Quaternion rotation;
 
-    vector3 localPosition;
-    vector3 localScale;
-    quaternion localRotation;
+    Vector3 localPosition;
+    Vector3 localScale;
+    Quaternion localRotation;
 
-    std::unique_ptr<transform> parent;
-    std::vector<std::unique_ptr<transform>> children;
-    
-    //transform(){
-    //    type = Tpersistant;
-    //}
+    std::unique_ptr<Transform> parent;
+    std::vector<std::unique_ptr<Transform>> children;
+
+    Transform() {
+        position, scale, localPosition, localScale = Vector3();
+        rotation, localRotation = Quaternion();
+        parent = nullptr;
+    }
 };
 
-class renderer : public component{
+class Renderer : public Component{
 
 };
 
+class CustomComponent : public Component{
+public:
+    int number = 21;
 
-class playerMovement : public component{
-
-    
-
+    void Serialize() override{
+        VARIABLE(number);
+    }
 };
+
