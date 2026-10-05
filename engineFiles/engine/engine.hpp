@@ -43,38 +43,46 @@ private:
 
     // start updateing frames. (contains a while(windowOpen) loop)
     static void startUpdating() {
-        std::chrono::duration<double> targetFrameTime;
-        while(windowOpen){
+        using namespace std::chrono_literals;
+
+        // track the time we last reset our 1-second FPS counter
+        auto fpsTimer = chronoClock::now();
+
+        while (windowOpen) {
             // +1 Frame
             countingFps++;
 
-            // what time did this frame start
+            // get the time it took to run this frame
             auto frameStart = chronoClock::now();
-            
+
             // get ms taken per frame (at target fps)
-            targetFrameTime = std::chrono::duration<double>(1.0f / targetFps);
+            auto targetFrameTime = std::chrono::duration<double>(1.0 / targetFps);
 
             // update the frame and run all Update()
             updateFrame();
 
-            // get the time it took for the engine to update the frame
-            auto realFrameTime = chronoClock::now() - frameStart;
+            // calculate the exact time this frame ought to finish
+            auto targetEnd = frameStart + targetFrameTime;
 
-            // if the engine took less time that the target frametime, wait the remainder
-            if(realFrameTime < targetFrameTime){
-                // waiting the remaining time..
-                std::this_thread::sleep_for(targetFrameTime - realFrameTime);
-            }
+            // sleep when high remaining time
+            //while (targetEnd - chronoClock::now() > 2ms) {
+            //    std::this_thread::sleep_for(1ms);
+            //}
 
-            // get the total time it took for the frame to update including waited time
-            auto totalFrameTime = chronoClock::now() - frameStart;
-            addingTime += totalFrameTime;
+            // preciser delay
+            while (chronoClock::now() < targetEnd) {}
 
-            // if the total frame rate was over 1s
-            if(addingTime > 1s){
-                addingTime = 0s;
+            // get current time after frame processing and waiting
+            auto now = chronoClock::now();
+
+            // if 1 second has elapsed since last FPS log
+            if (now - fpsTimer >= 1s) {
                 countedFps = countingFps;
                 countingFps = 0;
+
+                // advance timer by exactly 1s to retain leftover fractional seconds and prevent time drift
+                fpsTimer += 1s;
+
                 debug::log("FPS " + std::to_string(countedFps));
             }
         }
@@ -135,9 +143,11 @@ public:
     // Writes a file called "scene_data.json"
     // about all the entitys and their data
     static void WriteSceneData(){
+        std::vector<njson> json_entitys;
         for(auto& e : entitys){
-            e->serialize();
+            json_entitys.push_back(e->serialize());
         }
+
     }
 
     // starts the engine
@@ -154,6 +164,10 @@ public:
         windowOpen = false;
         debug::log("Engine starting..");
 
+        if(targetFps < 1){
+            targetFps = 60;
+        }
+
         global::running = true;
 
         initializeRenderer();
@@ -166,12 +180,14 @@ public:
 
 
     // set the engines target fps (default 60)
-    static void SetTargetFps(int fps = 60){
+    // targetFps(0) means the Fps in unbound
+    static void SetTargetFps(int64_t fps = 60){
         if(fps < 1){
-            fps = 60;
+            fps = 1000000000000;
         }
 
         // Set Renderer Target Fps...
+        targetFps = fps;
     }
 
 
