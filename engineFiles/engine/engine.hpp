@@ -6,6 +6,7 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <future>
 
 #include "entity.hpp"
 #include "global.hpp"
@@ -20,14 +21,10 @@ using namespace std::chrono_literals;
 class Engine {
 
 private:
-    
     using chronoClock = std::chrono::steady_clock;
-    
-    inline static std::vector<std::unique_ptr<Entity>> entitys;
 
     // Is the renderer window open
     inline static bool windowOpen;
-
 
     // time thats adds up to 1s, when its 1s+ then it resets to 0 and updated the countedFps
     inline static std::chrono::duration<int64_t, std::nano> addingTime;
@@ -48,7 +45,7 @@ private:
         // track the time we last reset our 1-second FPS counter
         auto fpsTimer = chronoClock::now();
 
-        while (windowOpen) {
+        while (windowOpen && global::running) {
             // +1 Frame
             countingFps++;
 
@@ -128,7 +125,11 @@ private:
         windowOpen = true;
     }
 
+    inline static std::future<void> asyncUpdate;
+
 public:
+    // engines entitys
+    inline static std::vector<std::unique_ptr<Entity>> entitys;
 
     // clears all entitys from the scene
     // resets it
@@ -175,7 +176,7 @@ public:
         callAwakes();
         callStarts();
 
-        startUpdating();
+        asyncUpdate = std::async(std::launch::async, startUpdating);
     }
 
 
@@ -190,10 +191,23 @@ public:
         targetFps = fps;
     }
 
+    static void Play(){
+        if(global::running){
+            debug::warn("Cannot 'Play' when the engine is already running.");
+            return;
+        }
+
+        global::running = true;
+        asyncUpdate = std::async(std::launch::async, startUpdating);
+    }
+    static void Pause(){
+        global::running = false;
+    }
+
 
     // instantiate (spawm) an entity in the engine
     static Entity& Instatiate(std::string name = "Entity"){ 
-        auto e = std::make_unique<Entity>(name, entitys.size());
+        auto e = std::make_unique<Entity>(name, entitys.size()+1);
         Entity& rawPtr = *e.get();
         entitys.push_back(std::move(e));
         return rawPtr;
